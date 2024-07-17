@@ -44,7 +44,7 @@ OSPerson_data = {}
 for i in range(1, 5):
     print(OSPerson_dict[f'OSPerson{i}']['OS'].shape)
     # 把Trial维度提到最前面，现顺序为Trialx时间x频率x配对
-    OSPerson_dict[f'OSPerson{i}']['OS'] = np.transpose(OSPerson_dict[f'OSPerson{i}']['OS'][-21:-5, 30:40, :, :], (2, 3, 0, 1))#这里通道数要提前到第二位，方便后续
+    OSPerson_dict[f'OSPerson{i}']['OS'] = np.transpose(OSPerson_dict[f'OSPerson{i}']['OS'][-21:-5, 30:, :, :], (2, 3, 1, 0))#这里通道数要提前到第二位，方便后续
     OSPerson_dict[f'OSPerson{i}']['Time'] =  np.transpose(OSPerson_dict[f'OSPerson{i}']['Time'][:, -21:-5], (1, 0))
     OSPerson_dict[f'OSPerson{i}']['fOS'] = OSPerson_dict[f'OSPerson{i}']['fOS'][30:]
     time_list = OSPerson_dict[f'OSPerson{i}']['Time'].ravel().tolist()
@@ -100,7 +100,7 @@ class MyNeuralNetwork(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2) # 池化层
         self.dropout = nn.Dropout(dropout_rate) # 防止过拟合
         # 重新计算卷积和池化后的特征图尺寸
-        self.flattened_size = 64* 8* 5
+        self.flattened_size = 64* 11* 8
         self.fc = nn.Linear(self.flattened_size, num_classes)
 
     def forward(self, x):
@@ -127,7 +127,7 @@ array_all = []
 for key in sorted_train_data_dict.keys():
     if len(sorted_train_data_dict[key]) >= 2 and key <= 10:
         for j in range(len(sorted_train_data_dict[key])):
-            label_all.append(key)
+            label_all.append(key-2)
             array_all.append(sorted_train_data_dict[key][j])
 print(label_all)
 
@@ -142,7 +142,7 @@ test_loader_1 = DataLoader(test_dataset_1, batch_size = 20, shuffle = False)
 
 # 初始化网络
 input_size_1 = 54  # 特征数量，这里应该是指通道数
-num_classes_1 = 11  # 类别数量
+num_classes_1 = 9  # 类别数量
 
 # 定义参数网格
 param_grid_1 = {
