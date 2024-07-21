@@ -49,7 +49,7 @@ for metric in param_grid_1['metric']:
         # 拟合模型
         embedding = umap_model.fit_transform(data_reshaped_all_1)
         # 使用KMeans进行聚类
-        kmeans = KMeans(n_clusters=2, random_state=42)
+        kmeans = KMeans(n_clusters=10, random_state=42)
         labels = kmeans.fit_predict(embedding)
 
         # 计算轮廓系数
