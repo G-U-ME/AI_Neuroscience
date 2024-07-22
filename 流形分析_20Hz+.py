@@ -20,14 +20,30 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 
 # 数据预处理
-data_reshaped_all_1 = np.zeros((0, 20736))
-# 16x24x54 =20736
+
+data_reshaped_all_1 = np.zeros((0, 6480))
+# 10x24x54 =12960
 labels_all_1 = np.array([])
 for i in range(1, 5):
-    data_1 = OSPerson_dict[f'OSPerson{i}']['OS'][-21:-5, 28:, :, :]
+    # data_1 = OSPerson_dict[f'OSPerson{i}']['OS'][-5:, 28:, :, :]
+    # # 首先使用transpose调整维度顺序
+    # data_transposed_1 = np.transpose(data_1, (2, 0, 1, 3))  # 将第三维（大小为40的维度）移到最前面
+    # # 然后将其余维度合并为一维
+    # data_reshaped_1 = data_transposed_1.reshape(data_transposed_1.shape[0], -1)  # 重塑数据为二维数组
+    # print(data_reshaped_1.shape)
 
+    # data_reshaped_all_1 = np.concatenate((data_reshaped_all_1, data_reshaped_1), axis=0)
+    # print(data_reshaped_all_1.shape)
+
+    data_1 = OSPerson_dict[f'OSPerson{i}']['OS'][-5:, 28:, :, :]
+    # 读图片开头2秒
+    data_background_1_1 = OSPerson_dict[f'OSPerson{i}']['OS'][0:5, 28:, :, :]
+    data_background_1_2 = OSPerson_dict[f'OSPerson{i}']['OS'][5:10, 28:, :, :]
+    data_background_1_3 = OSPerson_dict[f'OSPerson{i}']['OS'][10:15, 28:, :, :]
+    data_background_avg_1 = (data_background_1_1 + data_background_1_2 + data_background_1_3) / 3
+    data_filtered_1 = data_1 - data_background_avg_1
     # 首先使用transpose调整维度顺序
-    data_transposed_1 = np.transpose(data_1, (2, 0, 1, 3))  # 将第三维（大小为40的维度）移到最前面
+    data_transposed_1 = np.transpose(data_filtered_1, (2, 0, 1, 3))  # 将第三维（大小为40的维度）移到最前面
     # 然后将其余维度合并为一维
     data_reshaped_1 = data_transposed_1.reshape(data_transposed_1.shape[0], -1)  # 重塑数据为二维数组
     print(data_reshaped_1.shape)
@@ -35,7 +51,14 @@ for i in range(1, 5):
     data_reshaped_all_1 = np.concatenate((data_reshaped_all_1, data_reshaped_1), axis=0)
     print(data_reshaped_all_1.shape)
 
-    param_grid_1 = {
+    # 创建标签数组x
+    labels_1 = np.array([0 if x > 10 else 1 for x in OSPerson_dict[f'OSPerson{i}']['Track'][0]])
+    labels_all_1 = np.concatenate((labels_all_1, labels_1), axis=0)
+    print(labels_all_1.shape)
+
+labels_all_1 = labels_all_1.astype(int, copy=False)
+
+param_grid_1 = {
     'n_neighbors': [10, 12, 15, 20, 22, 25], 
     'metric': ['euclidean', 'cosine']
 }
@@ -49,7 +72,7 @@ for metric in param_grid_1['metric']:
         # 拟合模型
         embedding = umap_model.fit_transform(data_reshaped_all_1)
         # 使用KMeans进行聚类
-        kmeans = KMeans(n_clusters=10, random_state=42)
+        kmeans = KMeans(n_clusters=2, random_state=42)
         labels = kmeans.fit_predict(embedding)
 
         # 计算轮廓系数
@@ -108,9 +131,11 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # 可视化结果
-ax.scatter(best_embedding_1[:, 0], best_embedding_1[:, 1], best_embedding_1[:, 2], s=5)
+colors = ['red', 'blue']  # 定义颜色列表
+scatter = ax.scatter(best_embedding_1[:, 0], best_embedding_1[:, 1], best_embedding_1[:, 2], c=[colors[label] for label in labels_all_1], s=70)
 ax.set_title('UMAP Projection of Flattened Data')
 ax.set_xlabel('UMAP Component 1')
 ax.set_ylabel('UMAP Component 2')
 ax.set_zlabel('UMAP Component 3')
+
 plt.show()
