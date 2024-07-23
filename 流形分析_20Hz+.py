@@ -132,7 +132,7 @@ ax = fig.add_subplot(111, projection='3d')
 
 # 可视化结果
 colors = ['red', 'blue']  # 定义颜色列表
-scatter = ax.scatter(best_embedding_1[:, 0], best_embedding_1[:, 1], best_embedding_1[:, 2], c=[colors[label] for label in labels_all_1], s=70)
+scatter = ax.scatter(best_embedding_1[:, 0], best_embedding_1[:, 1], best_embedding_1[:, 2], c=[colors[label] for label in labels_all_1], s=5)
 ax.set_title('UMAP Projection of Flattened Data')
 ax.set_xlabel('UMAP Component 1')
 ax.set_ylabel('UMAP Component 2')
