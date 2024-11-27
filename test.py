@@ -1,115 +1,133 @@
-import tkinter as tk
+import pygame
 import random
-from tkinter import messagebox
+import sys
 
-class Minesweeper:
-    def __init__(self, rows, cols, mines):
-        self.rows = rows
-        self.cols = cols
-        self.mines = mines
-        self.board = [[0 for _ in range(cols)] for _ in range(rows)]
-        self.revealed = [[False for _ in range(cols)] for _ in range(rows)]
-        mine_positions = random.sample(range(rows * cols), mines)
-        for pos in mine_positions:
-            row = pos // cols
-            col = pos % cols
-            self.board[row][col] = -1
-        for row in range(rows):
-            for col in range(cols):
-                if self.board[row][col] == -1:
-                    continue
-                for r in range(max(0, row - 1), min(rows, row + 2)):
-                    for c in range(max(0, col - 1), min(cols, col + 2)):
-                        if self.board[r][c] == -1:
-                            self.board[row][col] += 1
+# 初始化 Pygame
+pygame.init()
 
-    def reveal(self, row, col):
-        if not self.is_valid(row, col):
-            return
-        if self.revealed[row][col]:
-            return
-        self.revealed[row][col] = True
-        if self.board[row][col] == -1:
-            return -1  # 地雷
-        elif self.board[row][col] > 0:
-            return self.board[row][col]
+# 定义颜色
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+
+# 设置游戏窗口
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+BLOCK_SIZE = 20
+GAME_SPEED = 15
+
+# 创建游戏窗口
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+pygame.display.set_caption('贪吃蛇游戏')
+
+# 初始化时钟
+clock = pygame.time.Clock()
+
+class Snake:
+    def __init__(self):
+        self.length = 1
+        self.positions = [(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)]
+        self.direction = random.choice([UP, DOWN, LEFT, RIGHT])
+        self.color = GREEN
+        self.score = 0
+
+    def get_head_position(self):
+        return self.positions[0]
+
+    def update(self):
+        cur = self.get_head_position()
+        x, y = self.direction
+        new = ((cur[0] + (x*BLOCK_SIZE)) % WINDOW_WIDTH, (cur[1] + (y*BLOCK_SIZE)) % WINDOW_HEIGHT)
+        if new in self.positions[3:]:
+            return False
         else:
-            for r in range(max(0, row - 1), min(self.rows, row + 2)):
-                for c in range(max(0, col - 1), min(self.cols, col + 2)):
-                    self.reveal(r, c)
-            return 0
+            self.positions.insert(0, new)
+            if len(self.positions) > self.length:
+                self.positions.pop()
+            return True
 
-    def is_valid(self, row, col):
-        return 0 <= row < self.rows and 0 <= col < self.cols
+    def reset(self):
+        self.length = 1
+        self.positions = [(WINDOW_WIDTH//2, WINDOW_HEIGHT//2)]
+        self.direction = random.choice([UP, DOWN, LEFT, RIGHT])
+        self.score = 0
 
-class MinesweeperGUI:
-    def __init__(self, root, rows, cols, mines):
-        self.root = root
-        self.rows = rows
-        self.cols = cols
-        self.mines = mines
-        self.board = Minesweeper(rows, cols, mines)
-        self.buttons = [[None for _ in range(cols)] for _ in range(rows)]
-        frame = tk.Frame(root)
-        frame.pack()
-        for row in range(rows):
-            for col in range(cols):
-                button = tk.Button(frame, text="*", width=2, height=1,
-                                   command=lambda r=row, c=col: self.on_click(r, c))
-                button.grid(row=row, column=col)
-                self.buttons[row][col] = button
+    def render(self):
+        for p in self.positions:
+            pygame.draw.rect(screen, self.color, (p[0], p[1], BLOCK_SIZE, BLOCK_SIZE))
 
-    def on_click(self, row, col):
-        if self.board.revealed[row][col]:
-            return
-        result = self.board.reveal(row, col)
-        if result == -1:
-            # 地雷
-            self.buttons[row][col].config(text="*", bg="red")
-            # 显示所有地雷
-            for r in range(self.rows):
-                for c in range(self.cols):
-                    if self.board.board[r][c] == -1:
-                        self.buttons[r][c].config(text="*", bg="red")
-            messagebox.showinfo("游戏结束", "你踩到地雷了！")
-        else:
-            # 更新当前格子
-            if result > 0:
-                self.buttons[row][col].config(text=str(result), bg="white")
-            else:
-                self.buttons[row][col].config(text="", bg="white")
-                # 递归翻开周围格子
-                for r in range(max(0, row - 1), min(self.rows, row + 2)):
-                    for c in range(max(0, col - 1), min(self.cols, col + 2)):
-                        if not self.board.revealed[r][c]:
-                            res = self.board.reveal(r, c)
-                            if res == 0:
-                                self.buttons[r][c].config(text="", bg="white")
-                            elif res > 0:
-                                self.buttons[r][c].config(text=str(res), bg="white")
-            # 更新所有已翻开的格子
-            for r in range(self.rows):
-                for c in range(self.cols):
-                    if self.board.revealed[r][c]:
-                        if self.board.board[r][c] == -1:
-                            self.buttons[r][c].config(text="*", bg="red")
-                        elif self.board.board[r][c] > 0:
-                            self.buttons[r][c].config(text=str(self.board.board[r][c]), bg="white")
-                        else:
-                            self.buttons[r][c].config(text="", bg="white")
-            self.root.update()
-        if self.check_win():
-            messagebox.showinfo("游戏结束", "你赢了！")
+class Food:
+    def __init__(self):
+        self.position = (0, 0)
+        self.color = RED
+        self.randomize_position()
 
-    def check_win(self):
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.board.board[row][col] != -1 and not self.board.revealed[row][col]:
-                    return False
-        return True
+    def randomize_position(self):
+        self.position = (random.randint(0, (WINDOW_WIDTH-BLOCK_SIZE)//BLOCK_SIZE) * BLOCK_SIZE,
+                        random.randint(0, (WINDOW_HEIGHT-BLOCK_SIZE)//BLOCK_SIZE) * BLOCK_SIZE)
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("扫雷游戏")
-    game = MinesweeperGUI(root, 10, 10, 10)
-    root.mainloop()
+    def render(self):
+        pygame.draw.rect(screen, self.color, (self.position[0], self.position[1], BLOCK_SIZE, BLOCK_SIZE))
+
+# 定义方向
+UP = (0, -1)
+DOWN = (0, 1)
+LEFT = (-1, 0)
+RIGHT = (1, 0)
+
+def main():
+    snake = Snake()
+    food = Food()
+    game_over = False
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if game_over:
+                    snake.reset()
+                    food.randomize_position()
+                    game_over = False
+                else:
+                    if event.key == pygame.K_UP and snake.direction != DOWN:
+                        snake.direction = UP
+                    elif event.key == pygame.K_DOWN and snake.direction != UP:
+                        snake.direction = DOWN
+                    elif event.key == pygame.K_LEFT and snake.direction != RIGHT:
+                        snake.direction = LEFT
+                    elif event.key == pygame.K_RIGHT and snake.direction != LEFT:
+                        snake.direction = RIGHT
+
+        if not game_over:
+            # 更新蛇的位置
+            if not snake.update():
+                game_over = True
+
+            # 检查是否吃到食物
+            if snake.get_head_position() == food.position:
+                snake.length += 1
+                snake.score += 1
+                food.randomize_position()
+
+        # 绘制游戏界面
+        screen.fill(BLACK)
+        snake.render()
+        food.render()
+        
+        # 显示分数
+        font = pygame.font.Font(None, 36)
+        score_text = font.render(f'得分: {snake.score}', True, WHITE)
+        screen.blit(score_text, (10, 10))
+
+        if game_over:
+            game_over_text = font.render('游戏结束！按任意方向键重新开始', True, WHITE)
+            screen.blit(game_over_text, (WINDOW_WIDTH//4, WINDOW_HEIGHT//2))
+
+        pygame.display.update()
+        clock.tick(GAME_SPEED)
+
+if __name__ == '__main__':
+    main()
